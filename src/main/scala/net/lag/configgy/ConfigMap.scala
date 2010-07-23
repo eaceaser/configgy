@@ -16,6 +16,7 @@
 
 package net.lag.configgy
 
+import scala.collection.mutable
 import scala.collection.Map
 import scala.util.Sorting
 import net.lag.logging.Logger
@@ -334,7 +335,63 @@ trait ConfigMap {
 
   def copyInto[T <: ConfigMap](configMap: T): T
 
-  def copyInto(obj: AnyRef) {
+  private def getTypedValue(key: String, t: java.lang.Class[_]): Option[Object] = {
+    if ( t == classOf[String] ) {
+      getString(key).map(_.asInstanceOf[Object])
+    } else if ( t == classOf[Int] ) {
+      getInt(key).map(_.asInstanceOf[Object])
+    } else if ( t == classOf[Long] ) {
+      getLong(key).map(_.asInstanceOf[Object])
+    } else if ( t == classOf[Double] ) {
+      getDouble(key).map(_.asInstanceOf[Object])
+    } else if ( t == classOf[Boolean]) {
+      getBool(key).map(_.asInstanceOf[Object])
+    } else {
+      None
+    }
+    /*else if ( t == classOf[Float]) {
+      //new java.lang.Float(value.toFloat)
+    } else if ( t == classOf[Short]) {
+//        getShort(key)
+    } else if ( t == classOf[Byte]) {
+//       getByte(key)
+    } */
+  }
+
+  def configure[A](klass: java.lang.Class[A]): A = {
+    val constructor = klass.getConstructors().toList.first
+
+    val parameterList = new mutable.ArrayBuffer[Object]
+    val parameterTypes = constructor.getParameterTypes().toList
+    val annotations = constructor.getParameterAnnotations().toList.map(_.toList)
+    (annotations zip parameterTypes).foreach { pair =>
+      val annotationList = pair._1
+      val parameterType = pair._2
+      annotationList.find( _.annotationType() == classOf[Key]).foreach { annotation =>
+        val key = annotation.asInstanceOf[Key].value
+        parameterList += getTypedValue(key, parameterType).get
+      }
+    }
+
+    val rv = constructor.newInstance(parameterList.toArray: _*).asInstanceOf[A]
+    val methods = klass.getDeclaredMethods().toList
+    methods.map { method =>
+      val jann = method.getAnnotation(classOf[Key])
+      val annotation = if (jann == null) None else Some(jann)
+      annotation.foreach { annotation =>
+        val key = annotation.value
+        val params = method.getParameterTypes()
+        if (params.size == 1) {
+          getTypedValue(key, params(0)).foreach { value =>
+            method.invoke(rv, value)
+          }
+        }
+      }
+    }
+    rv
+  }
+
+/*  def copyInto(obj: AnyRef) {
     val cls = obj.getClass
     val log = Logger.get(cls)
     val methods = cls.getMethods().filter { method =>
@@ -359,7 +416,7 @@ trait ConfigMap {
         param.map { p => method.invoke(obj, p.asInstanceOf[Object]) }
       }
     }
-  }
+  } */
 
   /**
    * If the requested key is present, return its value as a string. Otherwise, throw a

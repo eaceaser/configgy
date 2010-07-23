@@ -235,7 +235,24 @@ name = "Sparky"
       s.toConfigString mustEqual expected
     }
 
-    "copyInto" in {
+    "annotated object configure" in {
+      class TestConfig(
+        @Key("required_long") var long: Long,
+        @Key("required_bool") var bool: Boolean) {
+
+        @Key("optional_string") var optString: String = "1"
+      }
+      val s = new Attributes(null, "")
+      s("required_long") = "10"
+      s("requried_bool") = "true"
+
+      val config = s.configure(classOf[TestConfig])
+      config.long mustEqual s("required_long").toLong
+      config.bool mustEqual s("required_bool").toBoolean
+      config.optString mustEqual "1"
+    }
+
+/*    "copyInto" in {
       Logger.get("").setLevel(Level.OFF)
 
       val s = new Attributes(null, "")
@@ -256,6 +273,6 @@ name = "Sparky"
       val obj2 = new Other(false, 0.0, 0.0f)
       s.copyInto(obj2)
       obj2 mustEqual new Other(true, 2.5, 8.75f)
-    }
+    } */
   }
 }
