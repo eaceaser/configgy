@@ -346,16 +346,15 @@ trait ConfigMap {
       getDouble(key).map(_.asInstanceOf[Object])
     } else if ( t == classOf[Boolean]) {
       getBool(key).map(_.asInstanceOf[Object])
+    } else if ( t == classOf[Float]) {
+      getDouble(key).map(_.toFloat.asInstanceOf[Object])
+    } else if ( t == classOf[Short]) {
+      getInt(key).map(_.toShort.asInstanceOf[Object])
+    } else if ( t == classOf[Byte]) {
+      getInt(key).map(_.toByte.asInstanceOf[Object])
     } else {
       None
     }
-    /*else if ( t == classOf[Float]) {
-      //new java.lang.Float(value.toFloat)
-    } else if ( t == classOf[Short]) {
-//        getShort(key)
-    } else if ( t == classOf[Byte]) {
-//       getByte(key)
-    } */
   }
 
   def configure[A](klass: java.lang.Class[A]): A = {
@@ -369,7 +368,12 @@ trait ConfigMap {
       val parameterType = pair._2
       annotationList.find( _.annotationType() == classOf[Key]).foreach { annotation =>
         val key = annotation.asInstanceOf[Key].value
-        parameterList += getTypedValue(key, parameterType).get
+        try {
+          parameterList += getTypedValue(key, parameterType).get
+        } catch {
+          case ex: NoSuchElementException =>
+            throw new ConfigException("undefined config: " + key)
+        }
       }
     }
 

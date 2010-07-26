@@ -20,6 +20,12 @@ import scala.util.Sorting
 import net.lag.logging.{Level, Logger}
 import org.specs._
 
+case class TestConfig(
+  @Key("required_long") var long: Long,
+  @Key("required_bool") var bool: Boolean) {
+
+  @Key("optional_string") var optString: String = "1"
+}
 
 class AttributesSpec extends Specification {
 
@@ -236,15 +242,9 @@ name = "Sparky"
     }
 
     "annotated object configure" in {
-      class TestConfig(
-        @Key("required_long") var long: Long,
-        @Key("required_bool") var bool: Boolean) {
-
-        @Key("optional_string") var optString: String = "1"
-      }
       val s = new Attributes(null, "")
       s("required_long") = "10"
-      s("requried_bool") = "true"
+      s("required_bool") = "true"
 
       val config = s.configure(classOf[TestConfig])
       config.long mustEqual s("required_long").toLong
